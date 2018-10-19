@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: plug
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: plug
+  template:
+    metadata:
+      labels:
+        app: plug
+    spec:
+      containers:
+      - name: plug
+        image: plug:v1
+        ports:
+        - containerPort: 8181
+          name: react
+        - containerPort: 6603
+          name: websocket
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: plug
+spec:
+  ports:
+  - port: 8181
+  - port: 6603
+  selector:
+    app: plug
