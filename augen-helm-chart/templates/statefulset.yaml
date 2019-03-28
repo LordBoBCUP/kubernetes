@@ -7,9 +7,10 @@ metadata:
   labels:
     kubernetes.io/cluster-service: "true"
     app: {{$root.Values.appName}}
-provisioner: kubernetes.io/aws-ebs
+provisioner: kubernetes.io/gcp-pd
 parameters:
-  type: gp2
+  type: pd-standard
+  replication-type: none
 ---
 apiVersion: apps/v1beta1
 kind: StatefulSet
