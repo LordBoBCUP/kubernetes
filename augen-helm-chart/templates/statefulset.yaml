@@ -1,0 +1,82 @@
+{{- $root := . -}}
+{{ range $i, $node := $root.Values.nodes }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{$root.Values.namespace}}-{{$root.Values.appName}}-storage-{{$i}}
+  labels:
+    kubernetes.io/cluster-service: "true"
+    app: {{$root.Values.appName}}
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: gp2
+---
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: {{$root.Values.appName}}-{{$i}}
+  namespace: {{$root.Values.namespace}}
+  labels:
+    kubernetes.io/cluster-service: "true"
+    app: {{$root.Values.appName}}
+    version: v1
+spec:
+  replicas: 1
+  serviceName: {{$root.Values.appName}}-{{$i}}
+  template:
+    metadata:
+      labels:
+        app: {{$root.Values.appName}}
+        node: {{$root.Values.appName}}-{{$i}}
+        nodes: {{$root.Values.appName}}
+        version: v1
+        kubernetes.io/cluster-service: "true"
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+    spec:
+      containers:
+        - image: {{$root.Values.image.repository}}/{{$root.Values.image.name}}:{{$root.Values.image.tag}}
+          name: {{$root.Values.appName}}-{{$i}}
+          env:
+            {{- range .env }}
+            - name: {{.name}}
+              value: {{.value | quote}}
+            {{- end }}
+          command:
+{{ toYaml $root.Values.command | indent 12 }}
+          volumeMounts:
+            - name: {{$root.Values.appName}}-data-{{$i}}
+              mountPath: "/mnt/cennznet/"
+{{- if $root.Values.genesisBlock.create }}
+            - name: genesis-{{$i}}
+              mountPath: "/mnt/genesis/"
+{{- end }}
+{{- if $root.Values.monitor.create }}
+        - name: {{$root.Values.appName}}-{{$i}}-monitor
+          image: {{$root.Values.monitor.image.repository}}/{{$root.Values.monitor.image.name}}:{{$root.Values.monitor.image.tag}}
+{{- end }}
+      volumes:
+{{- if $root.Values.genesisBlock.create }}
+        - name: genesis-{{$i}}
+          secret:
+            secretName: {{$root.Values.genesisBlock.secretName}}
+{{- end }}
+      imagePullSecrets:
+        - name: registry-secret
+  updateStrategy:
+      type: RollingUpdate
+  volumeClaimTemplates:
+  - metadata:
+      name: {{$root.Values.appName}}-data-{{$i}}
+      annotations:
+        volume.beta.kubernetes.io/storage-class: {{$root.Values.namespace}}-{{$root.Values.appName}}-storage-{{$i}}
+      labels:
+        app: {{$root.Values.appName}}
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{$root.Values.storageSize}}
+---
+{{- end }}

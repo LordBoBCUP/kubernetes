@@ -1,0 +1,93 @@
+# Default values for cennznet.
+
+namespace: "augen"
+appName: "augen"
+
+image:
+  repository: parity
+  name: substrate
+  tag: "latest"
+genesisBlock:
+  create: false
+  secretName: genesis-block
+
+nodes:
+  - env:
+      - name: CENNZNET_KEY
+        value: "Alice"
+      - name: CENNZNET_NAME
+        value: ALICE
+      - name: CENNZNET_NODE_KEY
+        value: "0000000000000000000000000000000000000000000000000000000000000001"
+      - name: CENNZNET_BOOTNODE_1
+        value: /ip4/0.0.0.0/tcp/30333/p2p/QmXiB3jqqn2rpiKU7k1h7NJYeBg8WNSx9DiTRKz9ti2KSK
+    annotations:
+      rpc:
+        service.beta.kubernetes.io/aws-load-balancer-ssl-cert: arn:aws:acm:ap-southeast-1:225301848476:certificate/377bc2cc-a42a-4e9d-b839-8b97fdaed3c7
+        service.beta.kubernetes.io/aws-load-balancer-backend-protocol: tcp
+        service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "9933,9944"
+        external-dns.alpha.kubernetes.io/hostname: cennznet-test-node-0.centrality.me
+      p2p:
+        external-dns.alpha.kubernetes.io/hostname: cennznet-test-bootnode-0.centrality.me
+        service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+  - env:
+      - name: CENNZNET_KEY
+        value: "Bob"
+      - name: CENNZNET_NAME
+        value: BOB
+      - name: CENNZNET_NODE_KEY
+        value: "0000000000000000000000000000000000000000000000000000000000000002"
+      - name: CENNZNET_BOOTNODE_1
+        value: /ip4/0.0.0.0/tcp/30333/p2p/QmQZ8TjTqeDj3ciwr93EJ95hxfDsb9pEYDizUAbWpigtQN
+    annotations:
+      rpc:
+        service.beta.kubernetes.io/aws-load-balancer-ssl-cert: arn:aws:acm:ap-southeast-1:225301848476:certificate/377bc2cc-a42a-4e9d-b839-8b97fdaed3c7
+        service.beta.kubernetes.io/aws-load-balancer-backend-protocol: tcp
+        service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "9933,9944"
+        external-dns.alpha.kubernetes.io/hostname: cennznet-test-node-1.centrality.me
+      p2p:
+        external-dns.alpha.kubernetes.io/hostname: cennznet-test-bootnode-1.centrality.me
+        service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+
+command:
+  - "/bin/bash"
+  - "-c"
+  - >
+    cennznet
+    --chain=dev
+    --validator
+    --pruning=archive
+    --rpc-external
+    --ws-external
+    --key=$CENNZNET_KEY
+    --name=$CENNZNET_NAME
+    --node-key=$CENNZNET_NODE_KEY
+    --bootnodes=$CENNZNET_BOOTNODE_1
+
+services:
+  rpc:
+    ports:
+      - port: 9933
+        name: rpc-http
+      - port: 9944
+        name: rpc-ws
+    createLoadBalancer: true
+  p2p:
+    ports:
+      - port: 30333
+        name: p2p
+    createService: true
+    createLoadBalancer: true
+  main:
+    ports:
+      - port: 30333
+        name: p2p
+      - port: 9933
+        name: rpc-http
+      - port: 9944
+        name: rpc-ws
+
+storageSize: 20Gi
+
+whitelistIPs:
+  - 0.0.0.0/0 # office IPs

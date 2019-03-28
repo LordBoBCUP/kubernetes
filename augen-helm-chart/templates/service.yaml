@@ -1,0 +1,86 @@
+{{- /*
+This chart is kind of complex and unfortunately interwoven. We iterate through the elements in `nodes`,
+but we use the values in the global hash `services` to determine what service we create.
+We then use the annotations from each `node` in order to set the load balancer and DNS correctly
+*/ -}}
+
+{{- $root := . -}}
+{{ range $i, $node := $root.Values.nodes }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{$root.Values.appName}}-rpc-{{$i}}
+  namespace: {{$root.Values.namespace}}
+  labels:
+    node: {{$root.Values.appName}}-{{$i}}
+    app: {{$root.Values.appName}}
+    nodes: {{$root.Values.appName}}
+{{- if .annotations -}}{{- if .annotations.rpc }}
+  annotations:
+{{ toYaml .annotations.rpc | trim | indent 4 }}
+{{- end -}}{{- end }}
+spec:
+  ports:
+  {{- range $root.Values.services.rpc.ports }}
+    - name: {{.name}}
+      port: {{.port}}
+  {{- end }}
+{{- if $root.Values.services.rpc.createLoadBalancer }}
+  type: LoadBalancer
+  loadBalancerSourceRanges:
+  {{- range $root.Values.whitelistIPs }}
+    - {{ . }}
+  {{- end }}
+{{- end }}
+  selector:
+    node: {{$root.Values.appName}}-{{$i}}
+---
+{{- if $root.Values.services.p2p.createService }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{$root.Values.appName}}-p2p-{{$i}}
+  namespace: {{$root.Values.namespace}}
+  labels:
+    node: {{$root.Values.appName}}-{{$i}}
+    app: {{$root.Values.appName}}
+    nodes: {{$root.Values.appName}}
+{{- if .annotations -}}{{- if .annotations.p2p }}
+  annotations:
+{{ toYaml .annotations.p2p | trim | indent 4 }}
+{{- end -}}{{- end }}
+spec:
+  ports:
+  {{- range $root.Values.services.p2p.ports }}
+    - name: {{.name}}
+      port: {{.port}}
+  {{- end }}
+{{- if $root.Values.services.p2p.createLoadBalancer }}
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  loadBalancerSourceRanges:
+  {{- range $root.Values.whitelistIPs }}
+    - {{ . }}
+  {{- end }}
+{{- end }}
+  selector:
+    node: {{$root.Values.appName}}-{{$i}}
+---
+{{- end }}
+{{- end }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{.Values.appName}}-main-service
+  namespace: {{.Values.namespace}}
+  labels:
+    app: {{.Values.appName}}
+spec:
+  ports:
+    {{- range .Values.services.main.ports }}
+    - name: {{.name}}
+      port: {{.port}}
+  {{- end }}
+  selector:
+    nodes: {{.Values.appName}}
