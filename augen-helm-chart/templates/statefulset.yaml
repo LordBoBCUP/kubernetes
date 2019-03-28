@@ -51,10 +51,6 @@ spec:
             - name: genesis-{{$i}}
               mountPath: "/mnt/genesis/"
 {{- end }}
-{{- if $root.Values.monitor.create }}
-        - name: {{$root.Values.appName}}-{{$i}}-monitor
-          image: {{$root.Values.monitor.image.repository}}/{{$root.Values.monitor.image.name}}:{{$root.Values.monitor.image.tag}}
-{{- end }}
       volumes:
 {{- if $root.Values.genesisBlock.create }}
         - name: genesis-{{$i}}
